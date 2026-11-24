@@ -1,0 +1,15 @@
+{
+  "name": "Two99",
+  "collection": "two99_kb",
+  "url": "https://two99.org/",
+  "contact": "https://two99.org/contact-us/",
+  "skip_pages": ["/tag/", "/author/", "/category/"],
+  "listing_pages": ["/page/"],
+  "topics": ["Binary Wall", "Beetle", "Genshark AI", "e-commerce", "tech marketing", "cybersecurity", "SEO", "influencer marketing", "capital marketing", "media management", "consultancy", "offices", "phone", "email"],
+  "terms": ["two[\\s-]*99"],
+  "color": "#b91c1c",
+  "tone": "warm, consultative and agency-style",
+  "relation": "MarkGrid is built by Two99.",
+  "welcome": "Hi! I'm the Two99 assistant. How can I help?",
+  "suggestions": ["What does Two99 do?", "What services do you offer?", "How can I contact you?"]
+}

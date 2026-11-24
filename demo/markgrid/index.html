@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MarkGrid.ai demo</title>
+  <style>body{margin:0;min-height:100vh;display:grid;place-content:center;text-align:center;padding:16px;font-family:system-ui;background:#f7f7fa;color:#4f46e5;box-sizing:border-box}</style>
+</head>
+<body>
+  <h1>MarkGrid.ai</h1><p>The AI Workforce for Enterprise Marketing</p><small>Chatbot test page</small>
+  <script src="config.js"></script>
+  <script>
+    const s = document.createElement("script");
+    s.src = window.BACKEND_URL + "/widget.js";
+    s.dataset.site = "markgrid";
+    document.body.append(s);
+  </script>
+</body>
+</html>

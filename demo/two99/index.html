@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Two99 demo</title>
+  <style>body{margin:0;min-height:100vh;display:grid;place-content:center;text-align:center;padding:16px;font-family:system-ui;background:#f7f7fa;color:#b91c1c;box-sizing:border-box}</style>
+</head>
+<body>
+  <h1>Two99</h1><p>Consortium of Agencies Solving Marketing Challenges</p><small>Chatbot test page</small>
+  <script src="config.js"></script>
+  <script>
+    const s = document.createElement("script");
+    s.src = window.BACKEND_URL + "/widget.js";
+    s.dataset.site = "two99";
+    document.body.append(s);
+  </script>
+</body>
+</html>

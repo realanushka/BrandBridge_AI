@@ -19,7 +19,7 @@ Both pages load the **same** `widget.js`; only the `data-site` attribute differs
 | Layer | Tool | Why |
 |---|---|---|
 | Backend | Python + FastAPI | Fast to build, clean request validation |
-| LLM | Google Gemini (Flash-Lite for intent and answers) | Free tier; works with the OpenAI Python library |
+| LLM | Google Gemini (Flash-Lite for intent and answers) | Free tier; called over plain HTTP |
 | Embeddings | Gemini `gemini-embedding-001` | Same key, free tier |
 | Vector DB | Qdrant (local folder or Qdrant Cloud) | Separate collection per brand, persistent |
 | Scraping | requests + BeautifulSoup | Builds knowledge from each brand's public pages |
@@ -96,7 +96,7 @@ copy .env.example .env
 venv\Scripts\python -m ingestion.ingest --brand markgrid
 venv\Scripts\python -m ingestion.ingest --brand two99
 
-# 4. Run, each in its own terminal
+# 4. Run: double-click start.bat, or use three terminals
 venv\Scripts\python -m uvicorn backend.main:app --port 8000
 venv\Scripts\python -m http.server 5500 -d demo/markgrid
 venv\Scripts\python -m http.server 5501 -d demo/two99
@@ -127,10 +127,13 @@ With local Qdrant, stop the backend first.
 | `--dry-run` | Crawl and save the text only; no API keys needed |
 
 **Gemini free tier:** embeddings were limited to **1,000 per day** in November 2026. The full sites are about
-4,800 chunks, so a full upload takes several days for free. If it stops with error 429, what is saved stays:
+4,700 chunks, so a full upload takes several days for free. If it stops with error 429, what is saved stays:
 run the same command with `--cached` after the limit resets (midnight Pacific time). Chatbot questions use the
-same limit, so **a large upload can stop the chatbot answering until the reset**. Billing on the Gemini
-project raises the limit.
+same limit, so **a large upload leaves the chatbot on keyword search until the reset** (see below). Billing on
+the Gemini project raises the limit.
+
+**Keyword search fallback:** if embedding fails, the bot searches the same brand's chunks by keywords. Answers can be
+weaker, and it switches back by itself.
 
 ### Testing the answers
 
@@ -147,7 +150,8 @@ See `explain.md` for a detailed walkthrough.
 ## Project Structure
 
 ```
-backend/      FastAPI app: brand resolution, intent, retrieval, answer, leak check
+backend/      FastAPI app: brand resolution, intent, retrieval, keyword fallback, answer, leak check
+start.bat     Starts the backend and both demo pages
 ingestion/    Crawl, clean, dedupe, chunk, embed, upload per brand
 brands/       Brand profiles (markgrid, two99) + shared prompts and replies, all JSON
 widget/       widget.js (embeddable chat widget)
@@ -160,7 +164,7 @@ sample.md     Test questions with expected answers
 ## Known Limitations
 
 - Knowledge is a snapshot from the crawl date; re-run ingestion to refresh. `MAX_PAGES` (1000) caps each crawl.
-- Upload status on 24 November 2026: MarkGrid 960 of 3,572 new chunks (product, solution and glossary pages in; most articles pending); Two99 0 of 1,249 (still on its original 60 pages).
+- Upload status on 24 November 2026: MarkGrid 960 of 3,572 new chunks (product, solution and glossary pages in; most articles pending); Two99 0 of 1,151 (still on its original 60 pages).
 - Only public website content is used; pages that need JavaScript to show text are not supported.
 - The leak check looks for brand names (`terms` in the brand JSON).
 - Non-browser clients can fake `Origin`, and there is no rate limiting.

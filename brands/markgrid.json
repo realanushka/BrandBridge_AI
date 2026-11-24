@@ -1,0 +1,15 @@
+{
+  "name": "MarkGrid.ai",
+  "collection": "markgrid_kb",
+  "url": "https://markgrid.ai/",
+  "contact": "https://markgrid.ai/contact",
+  "skip_pages": [],
+  "listing_pages": ["/sitemap"],
+  "topics": ["Model Share", "Neuro-Marketing", "Creator Audit", "E-commerce Intelligence", "Budget Optimization", "SEO Intelligence", "Content Engine", "Community Signals", "Developer API", "MarkGrid Go", "pricing", "offices", "phone", "email"],
+  "terms": ["mark\\s*grid"],
+  "color": "#4f46e5",
+  "tone": "clear, confident and product-focused",
+  "relation": "MarkGrid is built by Two99.",
+  "welcome": "Hi! I'm the MarkGrid.ai assistant. How can I help?",
+  "suggestions": ["What does MarkGrid do?", "What are your pricing plans?", "How do I contact sales?"]
+}
