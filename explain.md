@@ -190,3 +190,8 @@ the combined page in headless Edge (question, "which company?", button, answer),
 - The router can pick the wrong brand for a question that names neither.
 - The leak check looks for brand names (`terms` in the JSON); add product names there if needed.
 - Non-browser clients can fake `Origin`, and there is no rate limiting. Add it before public launch.
+
+{
+  "builds": [{ "src": "backend/main.py", "use": "@vercel/python", "config": { "includeFiles": "{brands,widget}/**" } }],
+  "routes": [{ "src": "/(.*)", "dest": "backend/main.py" }]
+}
