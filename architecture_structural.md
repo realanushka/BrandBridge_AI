@@ -17,12 +17,12 @@ BrandBridge AI/
 ├── brands/
 │   ├── markgrid.json    brand profile
 │   ├── two99.json       brand profile
-│   └── shared.json      intent labels, prompts, fixed replies
+│   └── shared.json      intent labels, prompts, fixed replies, error texts, search words
 ├── widget/widget.js     Shadow DOM widget
 ├── demo/{markgrid,two99}/   index.html + config.js (backend URL)
 ├── tests/test_chat.py   offline tests
 ├── data/                git-ignored: extracted/<brand>.json, qdrant/ (local storage)
-├── sample.md            test questions with expected answers
+├── sample.md            86 test checks with expected answers
 ├── .env / .env.example  settings
 ├── requirements.txt     backend, ingestion and test packages
 ├── start.bat            starts the backend and both demo pages (Windows)
@@ -44,8 +44,19 @@ Every `.env` key is listed in `.env.example`; a missing one raises `KeyError` wh
 | `MAX_PAGES`, `CRAWL_DELAY`, `MIN_PAGE_CHARS`, `COMMON_SHARE`, `COMMON_MIN_PAGES`, `CHUNK_CHARS`, `CHUNK_OVERLAP`, `EMBED_BATCH`, `EMBED_DELAY` | Ingestion |
 
 Brand profile fields: `name`, `collection`, `url`, `contact`, `terms` (regexes that identify this brand,
-used for leak checks on other brands), `color`, `tone`, `relation`, `welcome`, `suggestions`, `topics` (products, used by the intent model),
-`skip_pages` (URL parts never crawled) and `listing_pages` (URL parts followed for links but not stored).
+used for leak checks on other brands), `color`, `tone`, `relation`, `welcome`, `suggestions`, `topics`
+(products and services, used by the intent model), `skip_pages` (URL parts never crawled) and `listing_pages` (URL parts followed for links but not stored).
+
+`shared.json` fields:
+
+| Field | Used for |
+|---|---|
+| `intents`, `intent_prompt` | Allowed labels and the classification prompt |
+| `system_prompt` | Answer rules, filled per brand |
+| `compare_question` | Replaces compare questions |
+| `replies` | Fixed replies and the fallback |
+| `errors` | `busy` and `failed` messages shown to visitors |
+| `stopwords`, `synonyms`, `patterns` | Keyword search: ignored words, word swaps (call → phone), and labels for text showing a phone number or email |
 
 ## 3. API
 
@@ -66,7 +77,8 @@ used for leak checks on other brands), `color`, `tone`, `relation`, `welcome`, `
 ```
 
 `suggestions` is filled only for greetings. Errors: 403 site/origin mismatch (`/config` and `/chat`),
-422 invalid body, 503 Gemini busy or limited, 500 other failure. The widget shows the message. The server keeps no session; the widget sends recent history.
+422 invalid body, 503 Gemini error (the message says busy when trying later can help), 500 other failure.
+The widget shows the message. The server keeps no session; the widget sends recent history.
 
 ## 4. Chat flow
 
@@ -88,8 +100,15 @@ classify (intent model; unknown label → brand)
 ```
 
 Retrieval includes the previous user message, so follow-up questions work. Compare questions are replaced by
-`compare_question` from `shared.json`. `search_text()` adds the
-brand name and removes other brands' names before embedding, so vague questions match well.
+`compare_question` from `shared.json`. `search_text()` adds the brand name and removes other brands' names
+before searching, so vague questions match well.
+
+**Keyword search** (`keyword_search.py`) runs only if embedding raises `GeminiError`. It ranks the same brand's
+stored chunks with BM25, skips any text naming another brand, and uses the home page for vague questions. The
+question is not retried for embedding, so the fallback is quick.
+
+**Gemini calls** retry on 429, 5xx and network errors, up to `LLM_MAX_RETRIES` with growing waits. They stop
+at once on a daily limit or other errors such as a bad key.
 
 ## 5. Ingestion flow
 
@@ -98,8 +117,9 @@ brand name and removes other brands' names before embedding, so vague questions 
 2. **Clean:** drops navigation, headers, scripts, forms, duplicate lines and lines naming the other brand. Keeps
    footers and the emails and phone numbers inside links.
 3. **Save:** page text goes to `data/extracted/<brand>.json`.
-4. **Dedupe:** pages saved twice (http/https, trailing slash, same text) are dropped. Lines found on more than `COMMON_SHARE` of pages (and more than `COMMON_MIN_PAGES`) are removed
-   from each page and stored once as a site-wide page.
+4. **Dedupe:** pages saved twice (http/https, trailing slash, same text) are dropped. Lines found on
+   more than `COMMON_SHARE` of pages (and more than `COMMON_MIN_PAGES`) are removed from each page and stored once
+   as a site-wide page.
 5. **Chunk:** `CHUNK_CHARS` characters with `CHUNK_OVERLAP` overlap; later chunks start with the page title.
    Chunks are ordered by address length, so core pages mostly come before articles.
 6. **Embed and upload:** `EMBED_BATCH` chunks at a time, with `EMBED_DELAY` seconds between. Each batch is saved
@@ -113,7 +133,7 @@ Payload: `brand`, `url`, `text` (cosine distance). `--dry-run` stops after chunk
 
 Loaded by one script tag; the API address is the script's own origin. It fetches `/config`, renders in
 Shadow DOM, and inserts text with `textContent`/`append` so replies cannot inject HTML. History lives in
-page memory. If `/config` fails, the widget is not shown.
+page memory. If `/config` fails, the widget is not shown. Error replies show the server's message.
 
 ## 7. Brand separation
 
@@ -121,7 +141,7 @@ page memory. If `/config` fails, the widget is not shown.
 |---|---|
 | Request | Origin allowlist decides the brand; message text cannot change it |
 | Storage | Separate crawls and collections; other-brand lines removed |
-| Retrieval | Only the resolved brand's collection is queried |
+| Retrieval | Only the resolved brand's collection is queried, also by keyword search |
 | Prompt | Current-brand-only rules; context treated as data |
 | Output | Leak check on every generated reply |
 
@@ -133,8 +153,8 @@ ingestion runs locally. Vercel installs the whole `requirements.txt`, including 
 ## 9. Status and limits
 
 - 29 offline tests; Gemini is faked and Qdrant runs in memory.
-- Checked with real Gemini answers on both brands, and through the widget in Chrome. Not yet tested: Vercel, and
-  the `sample.md` questions on the new data.
+- Checked with real Gemini answers on both brands, with embeddings and with keyword search, and through
+  the widget in Chrome (before keyword search was added). Not yet tested: Vercel, and the full `sample.md` list.
 - Upload of the full sites is incomplete: MarkGrid 960 of 3,572 chunks, Two99 0 of 1,151 (24 November 2026).
 - Gemini's free embedding limit (1,000 a day) is shared by ingestion and the chatbot; when it runs
   out, the chatbot uses keyword search. Its index loads once, so restart the backend after ingestion.

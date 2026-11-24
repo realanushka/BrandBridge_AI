@@ -22,6 +22,7 @@ Both pages load the **same** `widget.js`; only the `data-site` attribute differs
 | LLM | Google Gemini (Flash-Lite for intent and answers) | Free tier; called over plain HTTP |
 | Embeddings | Gemini `gemini-embedding-001` | Same key, free tier |
 | Vector DB | Qdrant (local folder or Qdrant Cloud) | Separate collection per brand, persistent |
+| Fallback search | Built-in keyword search (BM25) | Keeps the chat answering when Gemini embedding is limited |
 | Scraping | requests + BeautifulSoup | Builds knowledge from each brand's public pages |
 | Widget | Vanilla JS + Shadow DOM | One script tag, no framework, styles isolated from host site |
 | Hosting | Vercel (backend + 2 test pages) | Free, GitHub deploys, separate domains per site |
@@ -38,12 +39,13 @@ Two99 test page ─────┘   (data-site)   /chat   └── Qdrant: two
 /chat pipeline:
 1. Resolve brand on the server (data-site + Origin check)
 2. Classify intent (greeting / brand / other_brand / related / compare / off_topic / injection)
-3. Retrieve chunks ONLY from that brand's collection
-4. Answer with that brand's system prompt + profile (GPT)
-5. Leak check: block any reply naming the other brand
+   other_brand / related / off_topic / injection get a fixed reply and stop here
+3. Retrieve chunks ONLY from that brand's collection (by meaning; by keywords if embedding fails)
+4. Answer with that brand's system prompt + profile (Gemini)
+5. Leak check: a reply naming the other brand is regenerated once, then replaced
 ```
 
-Ingestion runs offline: crawl → clean → chunk → embed → upload to the brand's collection.
+Ingestion runs offline: crawl → clean → save text → dedupe → chunk → embed → upload to the brand's collection.
 
 ---
 
@@ -104,6 +106,9 @@ venv\Scripts\python -m http.server 5501 -d demo/two99
 
 Open http://localhost:5500 (MarkGrid) and http://localhost:5501 (Two99).
 
+Use either `start.bat` or the three commands, not both. Plain `python` is the global one, so use
+`venv\Scripts\python`. Restart the backend after changing code, brand JSON or `.env`, or after ingestion.
+
 Tests (no keys needed): `venv\Scripts\python -m pytest -q`
 
 ### When to run ingestion (step 3)
@@ -137,7 +142,7 @@ weaker, and it switches back by itself.
 
 ### Testing the answers
 
-`sample.md` has test questions with expected answers for both brands.
+`sample.md` has 86 checks with expected answers for both brands.
 
 ### Settings and deployment
 
@@ -158,7 +163,9 @@ widget/       widget.js (embeddable chat widget)
 demo/         Two test pages, one styled per brand
 tests/        Offline tests
 data/         Extracted text and local Qdrant storage (git-ignored)
-sample.md     Test questions with expected answers
+sample.md     Test checks with expected answers
+explain.md    Detailed walkthrough
+architecture_structural.md  How the code is organised
 ```
 
 ## Known Limitations
@@ -166,8 +173,9 @@ sample.md     Test questions with expected answers
 - Knowledge is a snapshot from the crawl date; re-run ingestion to refresh. `MAX_PAGES` (1000) caps each crawl.
 - Upload status on 24 November 2026: MarkGrid 960 of 3,572 new chunks (product, solution and glossary pages in; most articles pending); Two99 0 of 1,151 (still on its original 60 pages).
 - Only public website content is used; pages that need JavaScript to show text are not supported.
+- Keyword search matches words, not meaning, so its answers can be weaker.
 - The leak check looks for brand names (`terms` in the brand JSON).
 - Non-browser clients can fake `Origin`, and there is no rate limiting.
 - `MIN_SCORE` filters little with Gemini embeddings, because unrelated text also scores around 0.5. "I don't know" replies rely on the prompt.
-- The Gemini free tier has rate limits, and written replies take about 5-15 seconds.
+- The Gemini free tier has per-minute and per-day limits (visitors see "I'm a little busy" when one blocks a reply), and written replies take about 5-15 seconds.
 - The Vercel deployment has not been tested yet.
