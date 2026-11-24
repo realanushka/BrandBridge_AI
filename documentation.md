@@ -110,7 +110,7 @@ hallucinations. No video is needed.
 | No mixing | One collection per answer, no history in combined answers, leak check | `pipeline.answer()` | Built; reduces the risk, can't guarantee zero |
 | No hallucination | Answer only from retrieved text, otherwise "I don't know" and the contact link | `system_prompt` | Built; reduces the risk, can't guarantee zero |
 | Short README, clean code, repository | Short README, small files, settings outside the code | `README.md`, GitHub | README done; check the latest code is pushed |
-| Live demo | Deployment settings prepared | `vercel.json` | **Not done yet** |
+| Live demo | Deployment settings prepared | `render.yaml` | **Not done yet** |
 
 ## 1.6 From two ports to one chat window
 
@@ -329,7 +329,7 @@ Endpoints are normal `def`, not `async def`, so FastAPI runs them in a thread po
 - `brands/combined.json`: router prompt, labels, replies.
 - `tests/test_chat.py`: 40 tests [Measured].
 - `start.bat`: starts everything with the correct Python.
-- `vercel.json`: backend deployment settings. **Deployment has not been tested.**
+- `render.yaml`: Render settings for the backend and three static pages. **Deployment has not been tested.**
 - `sample.md`: 32 manual checks. `explain.md`, `README.md`, `architecture_structural.md`: documents.
 
 ## 2.12 Execution flow between files
@@ -368,7 +368,7 @@ Question: widget -> POST /chat -> main.require_brand -> pipeline.chat
 
 **LangChain / LlamaIndex were not used.** The pipeline is small, and direct code is easier to debug and explain.
 
-**Chroma versus Qdrant:** both store vectors and metadata. Chroma is fine locally, but the target host (Vercel) has no
+**Chroma versus Qdrant:** both store vectors and metadata. Chroma is fine locally, but the target host (Render's free plan) has no
 persistent disk, so a hosted database is needed. Qdrant supports both local and cloud with one client.
 
 ## 3.2 RAG pipeline
@@ -754,9 +754,9 @@ FAISS: a library, not a database. pgvector: good if Postgres is already used.
 
 ## 7.14 Deployment
 
-**Q84. How would you deploy?** Vercel for backend and two pages, Qdrant Cloud for vectors. Configured, **not tested**.
-**Q85. Risks on Vercel?** Package size, function time limits against multi-second LLM calls, cold starts, read-only disk.
-**Q86. Alternatives?** Docker on Cloud Run, Render or Fly.io.
+**Q84. How would you deploy?** Render: one web service for the backend, three static sites for the pages, and Qdrant Cloud for vectors. I tried Vercel first and got a 404 because the backend wasn't running there; FastAPI as an always-running process fits Render better. Configured, **not tested**.
+**Q85. Risks on Render's free plan?** It sleeps after 15 minutes and takes about a minute to wake, 512 MB RAM, 0.1 CPU, one instance, no persistent disk.
+**Q86. Alternatives?** Docker on Cloud Run or Fly.io, or Vercel functions.
 **Q87. What would you monitor?** Latency, error rate, 429 count, fallback rate, leak-check hits, "don't know" rate.
 **Q88. CI/CD?** Not built. [Improvement] Run pytest on each push.
 
@@ -818,7 +818,7 @@ Check in order: is the chunk in Qdrant? is it retrieved in the top 5? does it co
 | Context | Fixed top 5 | Token budget, compression |
 | Evaluation | Unit tests, manual list | Recall@k, faithfulness, judge model |
 | Safety | Intents, leak check, server brand | Guard model, product-name checks |
-| Operations | Local run, Vercel config | CI, monitoring, rate limits, cache |
+| Operations | Local run, Render config | CI, monitoring, rate limits, cache |
 
 # 9. Last-minute revision
 - 1,800 / 250 characters; batch 32; 30 s pause; 3,072 dimensions; cosine; Top-K 5; minimum score 0.25.
@@ -828,4 +828,4 @@ Check in order: is the chunk in Qdrant? is it retrieved in the top 5? does it co
 - 3 Gemini calls per written answer: intent or router, embedding, answer. 5 for both brands.
 - Ports: 5502 both brands, 5500 MarkGrid, 5501 Two99, 8000 backend. Ports were added, not merged (1.6).
 - The window is shared; the knowledge is separate.
-- 40 automated tests. Not tested: Vercel, full manual list, load.
+- 40 automated tests. Not tested: Render, full manual list, load.

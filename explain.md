@@ -38,7 +38,7 @@ The demo pages are the exception: they are sample sites, so they contain their o
 | `sample.md` | 32 checks you can run yourself |
 | `start.bat` | Starts the backend and the three demo pages |
 | `requirements.txt` | All packages: backend, ingestion, tests |
-| `vercel.json` | Backend deployment settings |
+| `render.yaml` | Deployment settings for Render |
 
 ## 3. What happens when a visitor sends a message
 
@@ -133,14 +133,18 @@ venv\Scripts\python -m pytest -q
 On the combined page, ask "What is your pricing?" (it asks which company), "What is Beetle?" (Two99) and "Which is better?"
 (describes both). Repeat the table on the Two99 page with the brands swapped. `sample.md` has the full list.
 
-## 6. Deploy (Vercel)
+## 6. Deploy (Render)
+
+`render.yaml` describes the backend and the three static pages.
 
 1. Use Qdrant Cloud, and run Step 3 against it from your computer.
 2. Push to GitHub (`.env` is git-ignored).
-3. Import the repo four times, with root directories: repo root (backend), `demo/markgrid`, `demo/two99`, `demo/combined`.
-4. Add every variable from `.env` to the backend project. Set `ORIGIN_BRAND_MAP` to the real URLs, no trailing slash:
-   `https://mg-demo.vercel.app=markgrid,https://t99-demo.vercel.app=two99`
-5. Put the backend URL in all `demo/*/config.js` files and push again.
+3. In Render: New > Blueprint, select the repo, and fill in the keys, `ORIGIN_BRAND_MAP` and `BACKEND_URL`.
+4. When Render shows the real addresses, correct `ORIGIN_BRAND_MAP` (backend) and `BACKEND_URL` (each page), no trailing slash:
+   `https://mg.onrender.com=markgrid,https://t99.onrender.com=two99,https://chat.onrender.com=combined`
+5. Redeploy. Each page's build writes `BACKEND_URL` into its `config.js`; the copy in git stays on localhost.
+
+The free backend sleeps after 15 minutes without visitors and takes about a minute to wake.
 
 To embed on a real site:
 ```html
@@ -169,7 +173,7 @@ Qdrant Cloud read and write; real Gemini answers on both brands, with embeddings
 wrong origin; the widget in Chrome on both pages (before the keyword search and busy message were added);
 the combined page in headless Edge (question, "which company?", button, answer), and about 20 real messages to it.
 
-**Not tested yet:** Vercel deployment, all 32 checks in `sample.md`, phones and other browsers, many visitors at once.
+**Not tested yet:** Render deployment, all 32 checks in `sample.md`, phones and other browsers, many visitors at once.
 
 **Upload status (24 November 2026):** MarkGrid 960 of 3,572 chunks; Two99 0 of 1,151 (still on its first 60 pages).
 
@@ -190,8 +194,3 @@ the combined page in headless Edge (question, "which company?", button, answer),
 - The router can pick the wrong brand for a question that names neither.
 - The leak check looks for brand names (`terms` in the JSON); add product names there if needed.
 - Non-browser clients can fake `Origin`, and there is no rate limiting. Add it before public launch.
-
-{
-  "builds": [{ "src": "backend/main.py", "use": "@vercel/python", "config": { "includeFiles": "{brands,widget}/**" } }],
-  "routes": [{ "src": "/(.*)", "dest": "backend/main.py" }]
-}

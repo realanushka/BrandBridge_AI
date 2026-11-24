@@ -28,7 +28,7 @@ BrandBridge AI/
 ├── .env / .env.example  settings
 ├── requirements.txt     backend, ingestion and test packages
 ├── start.bat            starts the backend and the three demo pages (Windows)
-└── vercel.json          backend deployment
+└── render.yaml          deployment on Render
 ```
 
 ## 2. Configuration
@@ -168,14 +168,14 @@ page memory. If `/config` fails, the widget is not shown. Error replies show the
 
 ## 8. Deployment
 
-Four Vercel projects: repo root (backend), `demo/markgrid`, `demo/two99`, `demo/combined`. Qdrant Cloud is required;
-ingestion runs locally. Vercel installs the whole `requirements.txt`, including ingestion and test packages.
+Render Blueprint (`render.yaml`): one Python web service and three static sites. Qdrant Cloud is required;
+ingestion runs locally. Render installs the whole `requirements.txt`, including ingestion and test packages.
 
 ## 9. Status and limits
 
 - 40 offline tests; Gemini is faked and Qdrant runs in memory.
 - Checked with real Gemini answers on both brands, with embeddings and with keyword search, and through
-  the widget in Chrome (before keyword search was added). Not yet tested: Vercel, and the full `sample.md` list.
+  the widget in Chrome (before keyword search was added). Not yet tested: Render, and the full `sample.md` list.
 - Upload of the full sites is incomplete: MarkGrid 960 of 3,572 chunks, Two99 0 of 1,151 (24 November 2026).
 - Gemini's free embedding limit (1,000 a day) is shared by ingestion and the chatbot; when it runs
   out, the chatbot uses keyword search. Its index loads once, at startup (about 24 seconds for MarkGrid in

@@ -1,0 +1,78 @@
+# Render Blueprint: one backend and three static test pages.
+# Values marked "sync: false" are typed in the Render dashboard, never stored here.
+services:
+  - type: web
+    name: brandbridge-api
+    runtime: python
+    plan: free
+    region: singapore
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn backend.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.11.9"
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: QDRANT_URL
+        sync: false
+      - key: QDRANT_API_KEY
+        sync: false
+      - key: ORIGIN_BRAND_MAP
+        sync: false
+      - key: LLM_BASE_URL
+        value: https://generativelanguage.googleapis.com/v1beta/openai/
+      - key: MODEL_MAIN
+        value: gemini-3.5-flash-lite
+      - key: MODEL_INTENT
+        value: gemini-3.5-flash-lite
+      - key: EMBED_MODEL
+        value: gemini-embedding-001
+      - key: LLM_MAX_RETRIES
+        value: "3"
+      - key: LLM_TIMEOUT
+        value: "60"
+      - key: QDRANT_TIMEOUT
+        value: "120"
+      - key: TOP_K
+        value: "5"
+      - key: MIN_SCORE
+        value: "0.25"
+      - key: MAX_MESSAGE_CHARS
+        value: "1000"
+      - key: HISTORY_TURNS
+        value: "6"
+
+  # Each page's build writes the backend address into its config.js.
+  - type: web
+    name: brandbridge-markgrid
+    runtime: static
+    buildCommand: echo "window.BACKEND_URL = '$BACKEND_URL';" > demo/markgrid/config.js
+    staticPublishPath: demo/markgrid
+    envVars:
+      - key: BACKEND_URL
+        sync: false
+      - key: SKIP_INSTALL_DEPS
+        value: "true"
+
+  - type: web
+    name: brandbridge-two99
+    runtime: static
+    buildCommand: echo "window.BACKEND_URL = '$BACKEND_URL';" > demo/two99/config.js
+    staticPublishPath: demo/two99
+    envVars:
+      - key: BACKEND_URL
+        sync: false
+      - key: SKIP_INSTALL_DEPS
+        value: "true"
+
+  - type: web
+    name: brandbridge-chat
+    runtime: static
+    buildCommand: echo "window.BACKEND_URL = '$BACKEND_URL';" > demo/combined/config.js
+    staticPublishPath: demo/combined
+    envVars:
+      - key: BACKEND_URL
+        sync: false
+      - key: SKIP_INSTALL_DEPS
+        value: "true"
