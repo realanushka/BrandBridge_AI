@@ -10,3 +10,4 @@ if not exist "venv\Scripts\python.exe" (
 start "Backend 8000" cmd /k venv\Scripts\python -m uvicorn backend.main:app --port 8000
 start "MarkGrid 5500" cmd /k venv\Scripts\python -m http.server 5500 -d demo/markgrid
 start "Two99 5501" cmd /k venv\Scripts\python -m http.server 5501 -d demo/two99
+start "Combined 5502" cmd /k venv\Scripts\python -m http.server 5502 -d demo/combined

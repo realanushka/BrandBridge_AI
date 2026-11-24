@@ -1,7 +1,7 @@
 """Offline tests: Gemini is faked and Qdrant runs in memory."""
 import os
 
-os.environ["ORIGIN_BRAND_MAP"] = "http://mg=markgrid,http://t9=two99"
+os.environ["ORIGIN_BRAND_MAP"] = "http://mg=markgrid,http://t9=two99,http://all=combined"
 
 import httpx
 import pytest
@@ -9,7 +9,7 @@ from fastapi.testclient import TestClient
 from qdrant_client import QdrantClient
 
 from backend import clients, keyword_search
-from backend.config import BRANDS, SHARED, search_text
+from backend.config import BRANDS, COMBINED, SHARED, search_text
 from backend.main import app
 from bs4 import BeautifulSoup
 
@@ -183,3 +183,58 @@ def test_busy_message_reaches_visitor(fake, monkeypatch):
 def test_phone_is_found_by_keywords():
     assert keyword_search.labels("HR Contact +91-9650354611") == ["phone"]
     assert "phone" in keyword_search.query_words("How can I call?")
+
+
+def combined_ask(fake, monkeypatch, label, message="q", replies=("fine",)):
+    fake["intent"], fake["replies"] = label, list(replies)
+    return ask("combined", "http://all", message).json()
+
+
+def test_combined_searches_only_the_routed_brand(fake, monkeypatch):
+    for brand, other in (("markgrid", "two99"), ("two99", "markgrid")):
+        fake["systems"].clear()
+        out = combined_ask(fake, monkeypatch, f"{brand} | What do you do?")
+        assert out["reply"] == f"{BRANDS[brand]['name']}:\nfine"
+        assert f"secret-{brand}" in fake["systems"][0] and f"secret-{other}" not in fake["systems"][0]
+
+
+def test_combined_name_in_message_beats_router(fake, monkeypatch):
+    assert combined_ask(fake, monkeypatch, "two99 | x", "What is MarkGrid?")["intent"] == "markgrid"
+
+
+def test_combined_both_answers_each_brand_separately(fake, monkeypatch):
+    out = combined_ask(fake, monkeypatch, "both | What do you do?", "Compare them", ["fine", "fine"])
+    assert out["reply"] == "MarkGrid.ai:\nfine\n\nTwo99:\nfine"
+    assert len(fake["systems"]) == 2
+    assert not any("secret-markgrid" in s and "secret-two99" in s for s in fake["systems"])
+
+
+def test_combined_general_comparison(fake, monkeypatch):
+    seen, original = [], clients.complete
+    monkeypatch.setattr(clients, "complete", lambda k, s, m: seen.append(m[-1]["content"]) or original(k, s, m))
+    for label, message in (("both", "Compare MarkGrid and Two99"), ("compare | Which is better?", "Which is better?")):
+        seen.clear()
+        out = combined_ask(fake, monkeypatch, label, message, ["fine", "fine"])
+        assert out["reply"].startswith(COMBINED["compare_intro"])
+        assert sorted(seen[1:]) == ["What does MarkGrid.ai do?", "What does Two99 do?"]
+
+
+def test_combined_asks_when_unclear_or_router_fails(fake, monkeypatch):
+    for label in ("unclear | x", "nonsense"):
+        out = combined_ask(fake, monkeypatch, label)
+        assert out["suggestions"] == ["MarkGrid.ai", "Two99"] and fake["systems"] == []
+
+
+@pytest.mark.parametrize("label", ["greeting", "related", "off_topic", "injection"])
+def test_combined_fixed_replies(fake, monkeypatch, label):
+    assert "{" not in combined_ask(fake, monkeypatch, label)["reply"] and fake["systems"] == []
+
+
+def test_combined_leak_is_blocked(fake, monkeypatch):
+    out = combined_ask(fake, monkeypatch, "markgrid | x", replies=["Two99 rocks", "two99 again"])
+    assert BRANDS["markgrid"]["contact"] in out["reply"]
+
+
+def test_combined_site_is_origin_checked(fake):
+    assert ask("combined", "http://mg").status_code == 403
+    assert ask("markgrid", "http://all").status_code == 403

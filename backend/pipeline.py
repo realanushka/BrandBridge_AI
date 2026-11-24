@@ -34,26 +34,27 @@ def retrieve(brand: str, query: str) -> list[str]:
 
 def chat(brand: str, message: str, history: list[dict]) -> tuple[str, str]:
     """Returns (intent, reply)."""
-    messages = [*history, {"role": "user", "content": message}]
-    intent = classify(brand, messages)
+    intent = classify(brand, [*history, {"role": "user", "content": message}])
     if intent in REPLIES:  # fixed reply: no retrieval, no LLM answer
         return intent, fill(brand, REPLIES[intent])
 
     if intent == "compare":  # answer only about the current brand
         message, history = fill(brand, SHARED["compare_question"]), []
-        messages = [{"role": "user", "content": message}]
+    return intent, answer(brand, message, history, intent)
 
+
+def answer(brand: str, message: str, history: list[dict], intent: str) -> str:
     chunks = []
     if intent != "greeting":
         # the previous user turn helps follow-ups such as "and how much is it?"
         previous = [m["content"] for m in history if m["role"] == "user"][-1:]
         chunks = retrieve(brand, "\n".join([*previous, message]))
         if not chunks:
-            return intent, fill(brand, REPLIES["fallback"])
+            return fill(brand, REPLIES["fallback"])
 
     system = fill(brand, SHARED["system_prompt"], context="\n\n".join(chunks))
     for _ in range(2):  # one retry if the reply leaks the other brand
-        reply = clients.complete("MODEL_MAIN", system, messages)
+        reply = clients.complete("MODEL_MAIN", system, [*history, {"role": "user", "content": message}])
         if reply and not leaks(brand, reply):
-            return intent, reply
-    return intent, fill(brand, REPLIES["fallback"])
+            return reply
+    return fill(brand, REPLIES["fallback"])

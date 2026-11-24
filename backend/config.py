@@ -18,11 +18,13 @@ def num(key: str, cast=int):
 
 SHARED = json.loads((ROOT / "brands/shared.json").read_text("utf-8"))
 BRANDS = {p.stem: json.loads(p.read_text("utf-8"))
-          for p in (ROOT / "brands").glob("*.json") if p.stem != "shared"}
+          for p in (ROOT / "brands").glob("*.json") if p.stem not in ("shared", "combined")}
+COMBINED = json.loads((ROOT / "brands/combined.json").read_text("utf-8"))
+SITES = BRANDS | {"combined": COMBINED}  # what a web page may ask for
 ORIGINS = dict(pair.strip().rsplit("=", 1) for pair in env("ORIGIN_BRAND_MAP").split(","))
 
-if unknown := set(ORIGINS.values()) - set(BRANDS):
-    raise ValueError(f"ORIGIN_BRAND_MAP has unknown brands: {unknown}")
+if unknown := set(ORIGINS.values()) - set(SITES):
+    raise ValueError(f"ORIGIN_BRAND_MAP has unknown sites: {unknown}")
 
 
 def others(brand: str) -> list[dict]:
@@ -34,11 +36,15 @@ def leaks(brand: str, text: str) -> bool:
     return any(re.search(t, text, re.I) for b in others(brand) for t in b["terms"])
 
 
-def search_text(brand: str, text: str) -> str:
-    """Put the brand name first and drop other brands, so vague questions match well."""
+def strip_others(brand: str, text: str) -> str:
     for t in (t for b in others(brand) for t in b["terms"]):
         text = re.sub(t, "", text, flags=re.I)
-    return f"{BRANDS[brand]['name']}: {text}"
+    return text
+
+
+def search_text(brand: str, text: str) -> str:
+    """Put the brand name first and drop other brands, so vague questions match well."""
+    return f"{BRANDS[brand]['name']}: {strip_others(brand, text)}"
 
 
 def fill(brand: str, template: str, **extra) -> str:
