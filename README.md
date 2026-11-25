@@ -4,11 +4,13 @@ One AI chatbot (one backend, one embeddable widget) that answers for both brands
 
 ## Live Demo
 
+Successfully deployed on Render: **https://brandbridge-ai-8yov.onrender.com**
+
 | Page | Link | Answers as |
 |---|---|---|
-| MarkGrid.ai | _link to be added_ | MarkGrid only |
-| Two99 | _link to be added_ | Two99 only |
-| Both brands | _link to be added_ | Either brand, with labelled answers |
+| MarkGrid.ai | Local: http://localhost:5500 (see Setup) | MarkGrid only |
+| Two99 | Local: http://localhost:5501 (see Setup) | Two99 only |
+| Both brands | https://brandbridge-ai-8yov.onrender.com | Either brand, with labelled answers |
 
 On free hosting, the first request after a quiet period can take about a minute.
 
