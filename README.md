@@ -6,9 +6,11 @@ One AI chatbot (one backend, one embeddable widget) that answers for both brands
 
 | Page | Link | Answers as |
 |---|---|---|
-| MarkGrid.ai | _add after deployment_ | MarkGrid only |
-| Two99 | _add after deployment_ | Two99 only |
-| Both brands | _add after deployment_ | Either brand, with labelled answers |
+| MarkGrid.ai | _link to be added_ | MarkGrid only |
+| Two99 | _link to be added_ | Two99 only |
+| Both brands | _link to be added_ | Either brand, with labelled answers |
+
+On free hosting, the first request after a quiet period can take about a minute.
 
 ## Tech Stack
 
@@ -17,6 +19,7 @@ One AI chatbot (one backend, one embeddable widget) that answers for both brands
 - **Vector database:** Qdrant, with BM25 keyword search as a fallback
 - **Ingestion:** requests, BeautifulSoup
 - **Widget:** vanilla JavaScript, Shadow DOM
+- **Hosting:** Render (`render.yaml`)
 
 ## Architecture
 
@@ -57,31 +60,34 @@ check the answer for the other brand's name. Ingestion (crawl → clean → chun
 
 ## Setup
 
-Requires Python 3.11+ and a Gemini API key. Windows PowerShell:
+Requires Python 3.11+, a Gemini API key, and Windows PowerShell.
 
 ```powershell
 python -m venv venv
 venv\Scripts\python -m pip install -r requirements.txt
-copy .env.example .env      # then set GEMINI_API_KEY
-
-# Build the knowledge bases (once)
+copy .env.example .env      # set GEMINI_API_KEY; for local storage, leave QDRANT_URL empty
 venv\Scripts\python -m ingestion.ingest --brand markgrid
 venv\Scripts\python -m ingestion.ingest --brand two99
-
-# Start the backend and the three pages
 .\start.bat
 ```
 
 Open http://localhost:5500 (MarkGrid), http://localhost:5501 (Two99) or http://localhost:5502 (both).
+If ingestion stops with error 429, run it again with `--cached` after the limit resets.
 
-Data is stored locally unless `QDRANT_URL` is set. Gemini's free tier limits embeddings per day; if ingestion
-stops with error 429, run it again with `--cached` after the reset.
+Tests: `venv\Scripts\python -m pytest -q` (40 offline tests). Manual checks: `sample.md`.
 
-Tests: `venv\Scripts\python -m pytest -q`
+## Deployment
+
+Create a Render Blueprint from `render.yaml` and enter the keys it asks for. Set `BACKEND_URL` to the backend address, and
+`ORIGIN_BRAND_MAP` to each page's address and site, such as `https://<backend>=combined` (the backend serves the
+combined page at `/`).
 
 ## Known Limitations
 
-- Knowledge is a snapshot, and the full upload of both sites is still in progress.
+- Knowledge is a snapshot, and not all extracted content is uploaded yet (Gemini free-tier limit).
 - On Gemini's free tier, replies can be slow or rate limited at busy times.
 - The router can misjudge a question that names neither brand.
 - There is no rate limiting, and non-browser clients can fake `Origin`.
+- AI checks reduce brand mixing and invented answers but can't guarantee zero.
+
+More detail: [Documentation.md](Documentation.md)
